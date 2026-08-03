@@ -1,7 +1,8 @@
 (function() {
-    console.log('[MyInsta Wrapper] Initializing top-bar nav & settings...');
+    console.log('[MyInsta Wrapper] Initializing clean CSS-only layout rules...');
 
-    // 1. CSS rules for hiding ads, reels, footers
+    // 1. Pure declarative CSS rules for hiding ads, reels, and footer promos
+    // Pure CSS rules never trigger React Fiber JavaScript errors or page crashes
     const styleId = 'myinsta-custom-styles';
     let style = document.getElementById(styleId);
     if (!style) {
@@ -11,30 +12,23 @@
     }
 
     style.textContent = `
-        /* Hide Ads and Sponsored Content */
-        article:has(span:contains("Sponsored")),
-        article:has(a[href*="/explore/ads/"]),
-        article:has(a[href*="/about/ads/"]),
-        div[data-testid="sponsored-post"],
-        div:has(> span:contains("Sponsored")),
-        div:has(> a[href*="/about/ads/"]) {
-            display: none !important;
-            height: 0 !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-
-        /* Hide Reels from Feed */
-        main[role="main"] article:has(a[href*="/reel/"]),
-        main[role="main"] article:has(a[href*="/reels/"]) {
-            display: none !important;
-            height: 0 !important;
-        }
-
         /* Hide Reels Navigation & Tab bar items */
         nav a[href*="/reels/"],
         a[href*="/reels/"],
         div[role="tablist"] a[href*="/reels/"] {
+            display: none !important;
+        }
+
+        /* Hide Reels from Main Feed cleanly */
+        main[role="main"] article:has(a[href*="/reel/"]),
+        main[role="main"] article:has(a[href*="/reels/"]) {
+            display: none !important;
+        }
+
+        /* Hide Sponsored Ads from Feed */
+        main[role="main"] article:has(a[href*="/explore/ads/"]),
+        main[role="main"] article:has(a[href*="/about/ads/"]),
+        div[data-testid="sponsored-post"] {
             display: none !important;
         }
 
@@ -45,73 +39,59 @@
             display: none !important;
         }
 
-        /* Custom Top Bar Gear Button Styling */
-        #myinsta-topbar-gear-btn {
-            background: none;
-            border: none;
-            color: #ffffff;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 6px 10px;
-            margin-left: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* Custom MyInsta menu row styling */
+        .myinsta-settings-row {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 14px 16px !important;
+            border-bottom: 1px solid #262626 !important;
+            cursor: pointer !important;
+            color: #f5f5f5 !important;
+            font-size: 15px !important;
+            font-weight: 500 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
         }
     `;
 
-    // 2. Dynamic DOM Observer for Ads
-    function hideAdsDynamic() {
-        const spans = document.querySelectorAll('span, div');
-        spans.forEach(el => {
-            if (el.children.length === 0 && (el.textContent.trim() === 'Sponsored' || el.textContent.trim() === 'إعلان مُموَّل')) {
-                const article = el.closest('article');
-                if (article) {
-                    article.style.display = 'none';
-                    article.style.height = '0px';
-                }
-            }
-        });
-    }
+    // 2. Inject MyInsta Option directly inside Instagram's Settings & Privacy Menu
+    function injectIntoSettingsMenu() {
+        if (document.getElementById('myinsta-settings-option-item')) return;
 
-    const observer = new MutationObserver(hideAdsDynamic);
-    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
-    hideAdsDynamic();
+        const isSettingsPage = window.location.pathname.includes('/accounts/') || window.location.pathname.includes('/settings/');
+        if (!isSettingsPage) return;
 
-    // 3. Inject Settings Gear directly into the Top Header Bar
-    function injectTopBarGear() {
-        if (document.getElementById('myinsta-topbar-gear-btn')) return;
+        const mainList = document.querySelector('main[role="main"]') || document.querySelector('ul') || document.querySelector('div[role="menu"]');
+        if (!mainList) return;
 
-        // Locate top header bar icons container (near Heart / Direct Messages icons)
-        const topHeader = document.querySelector('header') || document.querySelector('nav:has(a[href="/direct/inbox/"])');
-        let container = null;
+        const firstItem = mainList.querySelector('a') || mainList.querySelector('div[role="button"]') || mainList.children[0];
+        if (!firstItem) return;
 
-        if (topHeader) {
-            container = topHeader.querySelector('div:has(a[href*="/direct/inbox/"])') || topHeader;
+        const menuItem = document.createElement('div');
+        menuItem.id = 'myinsta-settings-option-item';
+        menuItem.className = 'myinsta-settings-row';
+        menuItem.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 20px;">⚙️</span>
+                <span>MyInsta Custom Settings</span>
+            </div>
+            <span style="color: #a8a8a8; font-size: 18px;">›</span>
+        `;
+
+        menuItem.addEventListener('click', showSettingsModal);
+
+        if (mainList.firstChild) {
+            mainList.insertBefore(menuItem, mainList.firstChild);
         } else {
-            // Fallback: look for direct inbox icon
-            const directIcon = document.querySelector('a[href*="/direct/inbox/"]');
-            if (directIcon && directIcon.parentElement) {
-                container = directIcon.parentElement;
-            }
-        }
-
-        if (container) {
-            const gearBtn = document.createElement('button');
-            gearBtn.id = 'myinsta-topbar-gear-btn';
-            gearBtn.innerHTML = '⚙️';
-            gearBtn.title = 'MyInsta Settings';
-            gearBtn.addEventListener('click', showSettingsModal);
-            container.appendChild(gearBtn);
+            mainList.appendChild(menuItem);
         }
     }
 
-    // Observe header updates to re-inject gear button if page layout updates
-    const topBarObserver = new MutationObserver(injectTopBarGear);
-    topBarObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
-    injectTopBarGear();
+    const settingsObserver = new MutationObserver(injectIntoSettingsMenu);
+    settingsObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    injectIntoSettingsMenu();
 
-    // 4. Modal Dialog for UI Settings
+    // 3. Modal Dialog for UI Settings
     function showSettingsModal() {
         const existing = document.getElementById('myinsta-settings-modal');
         if (existing) {
@@ -154,19 +134,15 @@
             </div>
             <div style="padding: 12px 0; border-top: 1px solid #363636;">
                 <div style="font-weight: 600; font-size: 14px;">✅ Hide Sponsored Ads</div>
-                <div style="font-size: 12px; color: #a8a8a8;">Active (Removes promoted posts from feed)</div>
+                <div style="font-size: 12px; color: #a8a8a8;">Active (Removes promoted posts)</div>
             </div>
             <div style="padding: 12px 0; border-top: 1px solid #363636;">
                 <div style="font-weight: 600; font-size: 14px;">✅ Disable Reels</div>
-                <div style="font-size: 12px; color: #a8a8a8;">Active (Hides short videos & navigation)</div>
+                <div style="font-size: 12px; color: #a8a8a8;">Active (Removes short videos & navigation)</div>
             </div>
             <div style="padding: 12px 0; border-top: 1px solid #363636;">
                 <div style="font-weight: 600; font-size: 14px;">✅ Following Feed Shortcut</div>
                 <div style="font-size: 12px; color: #a8a8a8;">Active (Tapping Home opens Following feed)</div>
-            </div>
-            <div style="padding: 12px 0; border-top: 1px solid #363636;">
-                <div style="font-weight: 600; font-size: 14px;">👁️ Anonymous Story Viewer</div>
-                <div style="font-size: 12px; color: #a8a8a8;">Active (Story telemetry blocked)</div>
             </div>
         `;
 
@@ -177,7 +153,7 @@
         overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     }
 
-    // 5. Intercept Home icon & logo clicks directly
+    // 4. Intercept Home icon & logo clicks safely
     document.addEventListener('click', function(e) {
         const anchor = e.target.closest('a');
         if (anchor) {
