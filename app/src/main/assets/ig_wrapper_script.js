@@ -1,7 +1,7 @@
 (function() {
-    console.log('[MyInsta Wrapper] Initializing complete Instagram tweaks...');
+    console.log('[MyInsta Wrapper] Initializing top-bar nav & settings...');
 
-    // 1. Inject Comprehensive CSS rules for hiding ads, sponsored posts, reels, and promo footers
+    // 1. CSS rules for hiding ads, reels, footers
     const styleId = 'myinsta-custom-styles';
     let style = document.getElementById(styleId);
     if (!style) {
@@ -11,7 +11,7 @@
     }
 
     style.textContent = `
-        /* Comprehensive Ad & Sponsored Content Hiding for Web & Mobile Layouts */
+        /* Hide Ads and Sponsored Content */
         article:has(span:contains("Sponsored")),
         article:has(a[href*="/explore/ads/"]),
         article:has(a[href*="/about/ads/"]),
@@ -24,7 +24,7 @@
             pointer-events: none !important;
         }
 
-        /* Hide Reels from Main Feed */
+        /* Hide Reels from Feed */
         main[role="main"] article:has(a[href*="/reel/"]),
         main[role="main"] article:has(a[href*="/reels/"]) {
             display: none !important;
@@ -44,9 +44,23 @@
         footer {
             display: none !important;
         }
+
+        /* Custom Top Bar Gear Button Styling */
+        #myinsta-topbar-gear-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 6px 10px;
+            margin-left: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     `;
 
-    // 2. Dynamic DOM Observer for Ads rendered dynamically via JS
+    // 2. Dynamic DOM Observer for Ads
     function hideAdsDynamic() {
         const spans = document.querySelectorAll('span, div');
         spans.forEach(el => {
@@ -64,35 +78,38 @@
     observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
     hideAdsDynamic();
 
-    // 3. Inject Floating Settings Gear Button into the Mobile UI
-    function injectSettingsButton() {
-        if (document.getElementById('myinsta-floating-settings-btn')) return;
+    // 3. Inject Settings Gear directly into the Top Header Bar
+    function injectTopBarGear() {
+        if (document.getElementById('myinsta-topbar-gear-btn')) return;
 
-        const btn = document.createElement('button');
-        btn.id = 'myinsta-floating-settings-btn';
-        btn.innerHTML = '⚙️';
-        btn.style.cssText = `
-            position: fixed;
-            bottom: 70px;
-            right: 16px;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: #0095f6;
-            color: white;
-            border: none;
-            font-size: 22px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            z-index: 999999;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
+        // Locate top header bar icons container (near Heart / Direct Messages icons)
+        const topHeader = document.querySelector('header') || document.querySelector('nav:has(a[href="/direct/inbox/"])');
+        let container = null;
 
-        btn.addEventListener('click', showSettingsModal);
-        (document.body || document.documentElement).appendChild(btn);
+        if (topHeader) {
+            container = topHeader.querySelector('div:has(a[href*="/direct/inbox/"])') || topHeader;
+        } else {
+            // Fallback: look for direct inbox icon
+            const directIcon = document.querySelector('a[href*="/direct/inbox/"]');
+            if (directIcon && directIcon.parentElement) {
+                container = directIcon.parentElement;
+            }
+        }
+
+        if (container) {
+            const gearBtn = document.createElement('button');
+            gearBtn.id = 'myinsta-topbar-gear-btn';
+            gearBtn.innerHTML = '⚙️';
+            gearBtn.title = 'MyInsta Settings';
+            gearBtn.addEventListener('click', showSettingsModal);
+            container.appendChild(gearBtn);
+        }
     }
+
+    // Observe header updates to re-inject gear button if page layout updates
+    const topBarObserver = new MutationObserver(injectTopBarGear);
+    topBarObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    injectTopBarGear();
 
     // 4. Modal Dialog for UI Settings
     function showSettingsModal() {
@@ -158,12 +175,6 @@
 
         document.getElementById('myinsta-modal-close').addEventListener('click', () => overlay.remove());
         overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', injectSettingsButton);
-    } else {
-        injectSettingsButton();
     }
 
     // 5. Intercept Home icon & logo clicks directly
