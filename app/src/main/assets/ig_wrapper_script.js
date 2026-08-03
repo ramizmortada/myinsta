@@ -1,7 +1,7 @@
 (function() {
     console.log('[MyInsta Wrapper] Initializing custom Instagram tweaks...');
 
-    // Inject CSS rules for hiding ads, sponsored posts, reels, and promo footers
+    // 1. Inject CSS rules for hiding ads, sponsored posts, reels, and promo footers
     const styleId = 'myinsta-custom-styles';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
@@ -44,4 +44,18 @@
         `;
         (document.head || document.documentElement).appendChild(style);
     }
+
+    // 2. Intercept Home icon & logo clicks directly (Event Delegation)
+    // Seamlessly routes to the Following feed when user taps Home icon or Instagram logo
+    document.addEventListener('click', function(e) {
+        const anchor = e.target.closest('a');
+        if (anchor) {
+            const href = anchor.getAttribute('href');
+            if (href === '/' || href === 'https://www.instagram.com/' || href === 'https://www.instagram.com') {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = 'https://www.instagram.com/?variant=following';
+            }
+        }
+    }, true);
 })();
