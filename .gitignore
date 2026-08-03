@@ -1,0 +1,12 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+/.vscode/
+/build
+/app/build
+/android-sdk
+/gradle-8.4
+*.apk
+*.zip
+inst_user_settings.tmp
